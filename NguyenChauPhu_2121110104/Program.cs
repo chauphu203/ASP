@@ -3,16 +3,21 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using NguyenChauPhu_2121110104.Data;
 using NguyenChauPhu_2121110104.Services;
+using Pomelo.EntityFrameworkCore.MySql;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseMySql(connectionString, new MySqlServerVersion(new Version(10, 4, 32))));
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddScoped<JwtTokenService>();
+builder.Services.AddScoped<AuditLogService>();
+builder.Services.AddScoped<PermissionService>();
+builder.Services.AddHttpContextAccessor();
 
 var jwtIssuer = builder.Configuration["Jwt:Issuer"]!;
 var jwtAudience = builder.Configuration["Jwt:Audience"]!;
@@ -73,6 +78,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
@@ -80,8 +87,56 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
-    await SeedData.InitializeAsync(db);
+    var resetUsersOnStartup = builder.Configuration.GetValue<bool>("SeedOptions:ResetUsersOnStartup");
+    await HealEfMigrationHistoryIfSchemaMissingAsync(db);
+    await db.Database.MigrateAsync();
+    await SeedData.InitializeAsync(db, resetUsersOnStartup);
+}
+
+/// <summary>
+/// Nếu __EFMigrationsHistory đã ghi migration nhưng bảng nghiệp vụ chưa có (xóa tay / DB lệch),
+/// xóa lịch sử để Migrate() chạy lại script tạo bảng.
+/// </summary>
+static async Task HealEfMigrationHistoryIfSchemaMissingAsync(AppDbContext db)
+{
+    if (!await db.Database.CanConnectAsync())
+    {
+        return;
+    }
+
+    await db.Database.OpenConnectionAsync();
+    try
+    {
+        await using var cmd = db.Database.GetDbConnection().CreateCommand();
+        cmd.CommandText = """
+            SELECT COUNT(*) FROM information_schema.tables
+            WHERE table_schema = DATABASE() AND LOWER(table_name) = '__efmigrationshistory'
+            """;
+        var histTable = Convert.ToInt32(await cmd.ExecuteScalarAsync() ?? 0);
+        if (histTable == 0)
+        {
+            return;
+        }
+
+        cmd.CommandText = """
+            SELECT COUNT(*) FROM information_schema.tables
+            WHERE table_schema = DATABASE() AND LOWER(table_name) = 'roles'
+            """;
+        var rolesTable = Convert.ToInt32(await cmd.ExecuteScalarAsync() ?? 0);
+
+        cmd.CommandText = "SELECT COUNT(*) FROM `__EFMigrationsHistory`";
+        var histRows = Convert.ToInt32(await cmd.ExecuteScalarAsync() ?? 0);
+
+        if (histRows > 0 && rolesTable == 0)
+        {
+            cmd.CommandText = "DELETE FROM `__EFMigrationsHistory`";
+            await cmd.ExecuteNonQueryAsync();
+        }
+    }
+    finally
+    {
+        await db.Database.CloseConnectionAsync();
+    }
 }
 
 app.Run();

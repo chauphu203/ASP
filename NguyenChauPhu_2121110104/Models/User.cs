@@ -17,5 +17,8 @@ namespace NguyenChauPhu_2121110104.Models
         public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
         public ICollection<AttendanceSession> AttendanceSessionsCreated { get; set; } = new List<AttendanceSession>();
         public ICollection<AttendanceRecord> AttendanceRecords { get; set; } = new List<AttendanceRecord>();
+        public ICollection<ClassSchedule> ClassSchedules { get; set; } = new List<ClassSchedule>();
+        public ICollection<ExamSchedule> ExamSchedules { get; set; } = new List<ExamSchedule>();
+        public ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
     }
 }

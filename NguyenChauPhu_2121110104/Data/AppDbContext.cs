@@ -21,6 +21,9 @@ namespace NguyenChauPhu_2121110104.Data
         public DbSet<Grade> Grades { get; set; }
         public DbSet<AttendanceSession> AttendanceSessions { get; set; }
         public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
+        public DbSet<ClassSchedule> ClassSchedules { get; set; }
+        public DbSet<ExamSchedule> ExamSchedules { get; set; }
+        public DbSet<AuditLog> AuditLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -36,11 +39,20 @@ namespace NguyenChauPhu_2121110104.Data
             modelBuilder.Entity<Grade>().ToTable("Grades");
             modelBuilder.Entity<AttendanceSession>().ToTable("AttendanceSession");
             modelBuilder.Entity<AttendanceRecord>().ToTable("AttendanceRecord");
+            modelBuilder.Entity<ClassSchedule>().ToTable("ClassSchedules");
+            modelBuilder.Entity<ExamSchedule>().ToTable("ExamSchedules");
+            modelBuilder.Entity<AuditLog>().ToTable("AuditLogs");
 
             modelBuilder.Entity<AttendanceSession>()
                 .HasKey(x => x.SessionId);
             modelBuilder.Entity<AttendanceRecord>()
                 .HasKey(x => x.RecordId);
+            modelBuilder.Entity<ClassSchedule>()
+                .HasKey(x => x.ClassScheduleId);
+            modelBuilder.Entity<ExamSchedule>()
+                .HasKey(x => x.ExamScheduleId);
+            modelBuilder.Entity<AuditLog>()
+                .HasKey(x => x.AuditLogId);
 
             modelBuilder.Entity<User>()
                 .HasIndex(x => x.Username).IsUnique();
@@ -116,6 +128,34 @@ namespace NguyenChauPhu_2121110104.Data
                 .WithMany(u => u.AttendanceRecords)
                 .HasForeignKey(a => a.StudentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ClassSchedule>()
+                .HasOne(s => s.Course)
+                .WithMany(c => c.ClassSchedules)
+                .HasForeignKey(s => s.CourseId);
+
+            modelBuilder.Entity<ClassSchedule>()
+                .HasOne(s => s.Lecturer)
+                .WithMany(u => u.ClassSchedules)
+                .HasForeignKey(s => s.LecturerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ExamSchedule>()
+                .HasOne(s => s.Course)
+                .WithMany(c => c.ExamSchedules)
+                .HasForeignKey(s => s.CourseId);
+
+            modelBuilder.Entity<ExamSchedule>()
+                .HasOne(s => s.Lecturer)
+                .WithMany(u => u.ExamSchedules)
+                .HasForeignKey(s => s.LecturerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<AuditLog>()
+                .HasOne(a => a.User)
+                .WithMany(u => u.AuditLogs)
+                .HasForeignKey(a => a.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

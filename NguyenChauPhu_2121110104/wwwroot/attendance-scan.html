@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Điểm danh QR</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+    <link rel="stylesheet" href="lib/adminlte/css/adminlte.min.css" />
+  </head>
+  <body class="bg-body-secondary p-4">
+    <div class="container" style="max-width: 480px">
+      <div class="card shadow">
+        <div class="card-header"><strong>Điểm danh buổi học</strong></div>
+        <div class="card-body">
+          <p id="msg" class="small text-muted">Đang kiểm tra phiên đăng nhập…</p>
+          <button type="button" id="btnScan" class="btn btn-success w-100 d-none">Gửi điểm danh</button>
+          <p id="result" class="mt-3 small"></p>
+          <p class="mb-0"><a href="/">Về trang chủ</a></p>
+        </div>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script>
+      (async () => {
+        const params = new URLSearchParams(location.search);
+        const token = params.get('t') || params.get('token');
+        const msg = document.getElementById('msg');
+        const btn = document.getElementById('btnScan');
+        const result = document.getElementById('result');
+
+        if (!token) {
+          msg.textContent = 'Thiếu mã trong URL. Quét lại mã QR từ giảng viên.';
+          return;
+        }
+
+        const access = localStorage.getItem('accessToken');
+        if (!access) {
+          msg.innerHTML = 'Bạn cần <a href="/login.html">đăng nhập</a> (tài khoản sinh viên) trước khi điểm danh.';
+          return;
+        }
+
+        const meRes = await fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + access } });
+        if (!meRes.ok) {
+          msg.textContent = 'Phiên hết hạn. Đăng nhập lại.';
+          return;
+        }
+        const me = await meRes.json();
+        if (!me.roles?.includes('Student') && !me.roles?.includes('Admin')) {
+          msg.textContent = 'Chỉ tài khoản sinh viên (hoặc admin thử) mới điểm danh tại đây.';
+          return;
+        }
+
+        msg.textContent = 'Nhấn nút bên dưới để xác nhận có mặt (token còn hạn theo buổi học).';
+        btn.classList.remove('d-none');
+
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          result.textContent = '';
+          const body = { token, studentId: me.userId, latitude: null, longitude: null };
+          const res = await fetch('/api/attendance/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + access },
+            body: JSON.stringify(body),
+          });
+          const text = await res.text();
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch {
+            data = text;
+          }
+          if (!res.ok) {
+            result.className = 'mt-3 small text-danger';
+            result.textContent = typeof data === 'string' ? data : JSON.stringify(data);
+          } else {
+            result.className = 'mt-3 small text-success';
+            result.textContent = 'Điểm danh thành công.';
+          }
+          btn.disabled = false;
+        });
+      })();
+    </script>
+  </body>
+</html>

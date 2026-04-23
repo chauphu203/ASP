@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Đăng ký | Quản lý sinh viên</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" rel="stylesheet" crossorigin="anonymous" />
+    <link rel="stylesheet" href="lib/adminlte/css/adminlte.min.css" />
+  </head>
+  <body class="register-page bg-body-secondary">
+    <div class="register-box">
+      <div class="register-logo"><b>QLSV</b> & Điểm danh</div>
+      <div class="card">
+        <div class="card-body register-card-body">
+          <p class="register-box-msg">Đăng ký tài khoản sinh viên</p>
+          <div class="input-group mb-2">
+            <input id="fullName" class="form-control" placeholder="Họ tên" />
+            <span class="input-group-text"><i class="bi bi-person-vcard"></i></span>
+          </div>
+          <div class="input-group mb-2">
+            <input id="username" class="form-control" placeholder="Tên đăng nhập" />
+            <span class="input-group-text"><i class="bi bi-person"></i></span>
+          </div>
+          <div class="input-group mb-2">
+            <input id="email" type="email" class="form-control" placeholder="Email" />
+            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+          </div>
+          <div class="input-group mb-2">
+            <input id="studentCode" class="form-control" placeholder="Mã sinh viên (tùy chọn)" />
+            <span class="input-group-text"><i class="bi bi-card-text"></i></span>
+          </div>
+          <div class="input-group mb-3">
+            <input id="password" type="password" class="form-control" placeholder="Mật khẩu" />
+            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+          </div>
+          <div class="d-grid gap-2">
+            <button type="button" id="btnRegister" class="btn btn-primary">Đăng ký</button>
+          </div>
+          <p id="regMsg" class="small mt-2 mb-0"></p>
+          <p class="mt-3 mb-0 text-center small">
+            <a href="/login.html">Đã có tài khoản? Đăng nhập</a>
+          </p>
+        </div>
+      </div>
+    </div>
+    <script>
+      document.getElementById('btnRegister').addEventListener('click', async () => {
+        const msg = document.getElementById('regMsg');
+        msg.className = 'small mt-2 mb-0';
+        msg.textContent = '';
+
+        const body = {
+          fullName: document.getElementById('fullName').value.trim(),
+          username: document.getElementById('username').value.trim(),
+          email: document.getElementById('email').value.trim(),
+          studentCode: document.getElementById('studentCode').value.trim() || null,
+          password: document.getElementById('password').value,
+        };
+
+        if (!body.fullName || !body.username || !body.email || !body.password) {
+          msg.classList.add('text-danger');
+          msg.textContent = 'Vui lòng nhập đầy đủ thông tin bắt buộc.';
+          return;
+        }
+
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          msg.classList.add('text-danger');
+          msg.textContent = typeof data === 'string' ? data : data.message || 'Đăng ký thất bại.';
+          return;
+        }
+
+        msg.classList.add('text-success');
+        msg.textContent = 'Đăng ký thành công. Chuyển sang trang đăng nhập...';
+        setTimeout(() => {
+          location.href = '/login.html';
+        }, 1000);
+      });
+    </script>
+  </body>
+</html>
